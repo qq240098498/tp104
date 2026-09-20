@@ -383,3 +383,121 @@ label.full input {
   display: flex;
   gap: 10px;
 }
+
+/* 命中清单：按目录的两级下钻汇总 */
+.block-title {
+  margin: 14px 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.dir-summary {
+  margin: 0 0 4px;
+}
+
+table.dir-grid {
+  min-width: 720px;
+}
+
+table.dir-grid td.num,
+table.dir-grid th:nth-child(n+2) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+table.dir-grid td {
+  max-width: none;
+}
+
+table.dir-grid tfoot td {
+  border-top: 2px solid var(--line);
+  border-bottom: none;
+  background: #f9fafc;
+  font-weight: 600;
+}
+
+tr.clickable {
+  cursor: pointer;
+}
+
+tr.dir-row:hover td,
+tr.file-row.clickable:hover td {
+  background: #f3f7ff;
+}
+
+.twisty {
+  display: inline-block;
+  width: 16px;
+  color: var(--ink-soft);
+  user-select: none;
+}
+
+.twisty.blank {
+  width: 16px;
+}
+
+td.dir-cell {
+  font-weight: 600;
+}
+
+td.file-cell {
+  padding-left: 26px;
+}
+
+td.rule-cell {
+  padding-left: 48px;
+  color: var(--ink-soft);
+}
+
+td.rule-cell .path-sub {
+  margin-left: 10px;
+  color: var(--ink-soft);
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 12px;
+}
+
+td.file-cell .path-sub {
+  margin-left: 10px;
+  color: var(--ink-soft);
+  font-size: 11.5px;
+}
+
+td.num.strong {
+  font-weight: 600;
+}
+
+td.num.sub {
+  color: #b6c0ca;
+}
+
+td.ignored-num {
+  color: #8a6d1a;
+  font-weight: 600;
+}
+
+tr.rule-row-ignored td {
+  color: var(--ink-soft);
+  background: #fbf8ef;
+}
+
+tr.rule-row-ignored td.rule-cell .path-sub {
+  color: #8a6d1a;
+}
+
+.dir-hint,
+.ignored-hint {
+  margin: 6px 0 0;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.ignored-wrap {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+}
+
+.ignored-wrap table.grid td.ignored-tag {
+  color: #8a6d1a;
+}

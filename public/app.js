@@ -367,6 +367,120 @@ async function runScan() {
   }
 }
 
+function levelCell(level) {
+  const levels = state.levels.length ? state.levels : ['提示', '警告', '错误'];
+  return levels.map((item) => (item === level
+    ? `<span class="tag ${levelClass(item)}">${escapeHtml(item)}</span>`
+    : '')).map((cell) => `<td class="num">${cell}</td>`).join('');
+}
+
+// 按目录汇总：目录行 → 文件行 → 每类规则行，三级都带级别分布与单独的忽略列
+function renderDirectorySummary(result) {
+  const box = el('dir-summary');
+  const dirs = result.summary.byDirectory;
+  if (!dirs.length) {
+    box.classList.add('hidden');
+    box.innerHTML = '';
+    return;
+  }
+
+  const rows = dirs.map((dir, di) => {
+    const expandable = dir.files.length > 0;
+    let html = `<tr class="dir-row${expandable ? ' clickable' : ''}"${expandable ? ` data-dir-toggle="${di}"` : ''}>
+      <td class="dir-cell mono">${expandable ? '<span class="twisty">▸</span>' : '<span class="twisty blank"></span>'}${escapeHtml(dir.directory)}/</td>
+      <td class="num strong">${dir.count}</td>
+      <td class="num">${dir.fileCount}</td>
+      <td class="num">${dir.byLevel['提示'] || 0}</td>
+      <td class="num">${dir.byLevel['警告'] || 0}</td>
+      <td class="num">${dir.byLevel['错误'] || 0}</td>
+      <td class="num ignored-num">${dir.ignored || ''}</td>
+    </tr>`;
+
+    dir.files.forEach((file, fi) => {
+      const fileKey = `${di}-${fi}`;
+      html += `<tr class="file-row hidden clickable" data-dir="${di}" data-file-toggle="${fileKey}">
+        <td class="file-cell mono"><span class="twisty">▸</span><span class="file-name">${escapeHtml(file.name)}</span><span class="path-sub">${escapeHtml(file.path)}</span></td>
+        <td class="num strong">${file.count}</td>
+        <td class="num sub">—</td>
+        <td class="num">${file.byLevel['提示'] || 0}</td>
+        <td class="num">${file.byLevel['警告'] || 0}</td>
+        <td class="num">${file.byLevel['错误'] || 0}</td>
+        <td class="num ignored-num">${file.ignored || ''}</td>
+      </tr>`;
+
+      file.byRule.forEach((rule) => {
+        html += `<tr class="rule-row hidden" data-file="${fileKey}">
+          <td class="rule-cell mono"><span class="twisty blank"></span>${escapeHtml(rule.code)}<span class="path-sub">${escapeHtml(rule.ruleName)}</span></td>
+          <td class="num">${rule.count}</td>
+          <td class="num sub"></td>
+          ${levelCell(rule.level)}
+          <td class="num sub"></td>
+        </tr>`;
+      });
+
+      file.ignoredByRule.forEach((rule) => {
+        html += `<tr class="rule-row rule-row-ignored hidden" data-file="${fileKey}">
+          <td class="rule-cell mono"><span class="twisty blank"></span>${escapeHtml(rule.code)}<span class="path-sub">${escapeHtml(rule.ruleName)}（已忽略）</span></td>
+          <td class="num sub"></td>
+          <td class="num sub"></td>
+          ${'<td class="num sub"></td><td class="num sub"></td><td class="num sub"></td>'}
+          <td class="num ignored-num">${rule.count}</td>
+        </tr>`;
+      });
+    });
+    return html;
+  }).join('');
+
+  const totalFiles = dirs.reduce((sum, dir) => sum + dir.fileCount, 0);
+  box.innerHTML = `
+    <h3 class="block-title">按目录汇总</h3>
+    <div class="table-wrap">
+      <table class="grid dir-grid">
+        <thead>
+          <tr>
+            <th>目录 / 文件 / 规则</th>
+            <th>命中</th>
+            <th>涉及文件</th>
+            <th>提示</th>
+            <th>警告</th>
+            <th>错误</th>
+            <th>忽略</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+        <tfoot>
+          <tr>
+            <td>合计</td>
+            <td class="num strong">${result.summary.total}</td>
+            <td class="num">${totalFiles}</td>
+            <td class="num">${result.summary.byLevel['提示'] || 0}</td>
+            <td class="num">${result.summary.byLevel['警告'] || 0}</td>
+            <td class="num">${result.summary.byLevel['错误'] || 0}</td>
+            <td class="num ignored-num">${result.summary.ignoredTotal || ''}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    <p class="dir-hint">点目录展开其下文件，点文件展开每类规则各命中多少条；“忽略”一列单独计数，不计入命中数。</p>`;
+  box.classList.remove('hidden');
+}
+
+// 被忽略的命中单独成表，绝不混进有效命中清单
+function renderIgnoredHits(result) {
+  const wrap = el('ignored-wrap');
+  el('ignored-count').textContent = result.summary.ignoredTotal;
+  const body = el('ignored-body');
+  body.innerHTML = result.ignoredHits.map((hit) => `<tr>
+      <td class="mono">${escapeHtml(hit.code)}</td>
+      <td><span class="tag ${levelClass(hit.level)}">${escapeHtml(hit.level)}</span></td>
+      <td>${escapeHtml(hit.ruleName)}</td>
+      <td class="mono">${escapeHtml(hit.path)}</td>
+      <td class="mono">${hit.lineNo}</td>
+      <td class="mono line-cell">${escapeHtml(hit.lineText)}</td>
+    </tr>`).join('');
+  wrap.classList.toggle('hidden', result.ignoredHits.length === 0);
+}
+
 function renderScan(result) {
   el('scan-meta').textContent = `扫描时刻 ${formatTime(result.scannedAt)}　参与比对的规则 ${result.rulesUsed} 条（启用共 ${result.enabledRules} 条）　范围里的文件 ${result.filesInScope} 个（清单共 ${result.filesTotal} 个）`;
 
@@ -386,15 +500,19 @@ function renderScan(result) {
   const ruleText = result.summary.byRule
     .map((item) => `${item.code} ${item.count} 条`)
     .join('　') || '没有规则命中';
-  const fileText = result.summary.byFile
-    .map((item) => `${item.path} ${item.count} 条`)
-    .join('　') || '没有文件命中';
+  const ignoredLevelText = Object.keys(result.summary.ignoredByLevel)
+    .map((key) => `${key} ${result.summary.ignoredByLevel[key]} 条`)
+    .join('　');
   summaryBox.innerHTML = `
-    <div class="summary-line"><strong>一共命中 ${result.summary.total} 条</strong>　${escapeHtml(levelText)}</div>
-    <div class="summary-line">按规则：${escapeHtml(ruleText)}</div>
-    <div class="summary-line">按文件：${escapeHtml(fileText)}</div>`;
+    <div class="summary-line"><strong>有效命中 ${result.summary.total} 条</strong>　${escapeHtml(levelText)}</div>
+    <div class="summary-line">被忽略 <strong>${result.summary.ignoredTotal}</strong> 条（${escapeHtml(ignoredLevelText)}），单独列在下方，不计入有效命中</div>
+    <div class="summary-line">按规则：${escapeHtml(ruleText)}</div>`;
   summaryBox.classList.remove('hidden');
 
+  renderDirectorySummary(result);
+  renderIgnoredHits(result);
+
+  el('hit-title').classList.toggle('hidden', result.hits.length === 0);
   const body = el('hit-body');
   body.innerHTML = result.hits.map((hit) => `<tr>
       <td class="mono">${escapeHtml(hit.code)}</td>
@@ -409,6 +527,37 @@ function renderScan(result) {
 
 // 列表上的操作用事件委托统一处理，列表重绘之后不需要重新绑定
 document.addEventListener('click', async (event) => {
+  // 目录汇总的两级展开：点目录展开文件行，点文件展开各类规则行
+  const dirToggle = event.target.closest('[data-dir-toggle]');
+  if (dirToggle) {
+    const di = dirToggle.dataset.dirToggle;
+    const expanded = dirToggle.classList.contains('expanded');
+    dirToggle.classList.toggle('expanded', !expanded);
+    dirToggle.querySelector('.twisty').textContent = expanded ? '▸' : '▾';
+    document.querySelectorAll(`tr.file-row[data-dir="${di}"]`).forEach((row) => {
+      row.classList.toggle('hidden', expanded);
+      if (expanded) {
+        // 目录收起时把已展开的文件与规则行一并收起来
+        row.classList.remove('expanded');
+        row.querySelector('.twisty').textContent = '▸';
+        document.querySelectorAll(`tr.rule-row[data-file="${row.dataset.fileToggle}"]`)
+          .forEach((ruleRow) => ruleRow.classList.add('hidden'));
+      }
+    });
+    return;
+  }
+
+  const fileToggle = event.target.closest('[data-file-toggle]');
+  if (fileToggle) {
+    const key = fileToggle.dataset.fileToggle;
+    const expanded = fileToggle.classList.contains('expanded');
+    fileToggle.classList.toggle('expanded', !expanded);
+    fileToggle.querySelector('.twisty').textContent = expanded ? '▸' : '▾';
+    document.querySelectorAll(`tr.rule-row[data-file="${key}"]`)
+      .forEach((row) => row.classList.toggle('hidden', expanded));
+    return;
+  }
+
   const node = event.target.closest('button');
   if (!node) return;
 

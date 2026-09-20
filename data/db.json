@@ -168,7 +168,7 @@
       "id": "file-2003",
       "path": "src/server/user.js",
       "type": "js",
-      "content": "const db = require(\"./db\");\n\nconst conn = \"postgres://app:app@127.0.0.1:5432/member\";\nconst password = \"app-2026\";\n\nfunction findUser(id) {\n  try {\n    return db.query(\"select * from users where id = $1\", [id]);\n  } catch (e) {}\n}\n\nmodule.exports = { findUser, conn, password };",
+      "content": "const db = require(\"./db\");\n\nconst conn = \"postgres://app:app@127.0.0.1:5432/member\";\nconst password = \"app-2026\"; // nolint 口令走部署时注入，样例数据先豁免\n\nfunction findUser(id) {\n  try {\n    return db.query(\"select * from users where id = $1\", [id]);\n  } catch (e) {}\n}\n\nmodule.exports = { findUser, conn, password };",
       "note": "账号查询",
       "createdAt": "2026-09-02T03:00:00.000Z",
       "updatedAt": "2026-09-02T03:00:00.000Z"
@@ -231,7 +231,7 @@
       "id": "file-2010",
       "path": "scripts/migrate.sh",
       "type": "sh",
-      "content": "#!/usr/bin/env bash\nset -e\n\nDB_URL=\"postgres://app:app@127.0.0.1:5432/member\"\n\npsql \"$DB_URL\" -f sql/2026-09-01-member.sql\necho \"迁移完成\"",
+      "content": "#!/usr/bin/env bash\nset -e\n\nDB_URL=\"postgres://app:app@127.0.0.1:5432/member\" # nolint 迁移脚本只在本机执行，地址豁免\n\npsql \"$DB_URL\" -f sql/2026-09-01-member.sql\necho \"迁移完成\"",
       "note": "迁移脚本",
       "createdAt": "2026-09-02T03:00:00.000Z",
       "updatedAt": "2026-09-02T03:00:00.000Z"
@@ -249,7 +249,7 @@
       "id": "file-2012",
       "path": "config/deploy.yml",
       "type": "yml",
-      "content": "service: member\nreplicas: 2\ndatabase: postgres://app:app@127.0.0.1:5432/member\nhealthcheck: /health\nresources:\n  cpu: 500m\n  memory: 512Mi",
+      "content": "service: member\nreplicas: 2\ndatabase: postgres://app:app@127.0.0.1:5432/member # nolint 样例环境地址，正式值走配置中心\nhealthcheck: /health\nresources:\n  cpu: 500m\n  memory: 512Mi",
       "note": "部署描述",
       "createdAt": "2026-09-02T03:00:00.000Z",
       "updatedAt": "2026-09-02T03:00:00.000Z"

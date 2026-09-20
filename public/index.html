@@ -139,6 +139,8 @@
       <p class="scan-meta" id="scan-meta">还没有扫过，点右上角扫一遍</p>
       <p class="scan-warning hidden" id="scan-warning"></p>
       <div class="summary hidden" id="scan-summary"></div>
+      <div class="dir-summary hidden" id="dir-summary"></div>
+      <h3 class="block-title hidden" id="hit-title">有效命中清单</h3>
       <div class="table-wrap">
         <table class="grid">
           <thead>
@@ -155,6 +157,25 @@
         </table>
       </div>
       <p class="empty-tip hidden" id="hit-empty">这一轮没有命中</p>
+      <div class="ignored-wrap hidden" id="ignored-wrap">
+        <h3 class="block-title">被忽略的命中（<span id="ignored-count">0</span> 条）</h3>
+        <p class="ignored-hint">下面这些行带了 nolint 标记，单独列出，不计入上方的有效命中与各目录条数；把文件内容里的标记删掉再扫一遍就会恢复检查。</p>
+        <div class="table-wrap">
+          <table class="grid">
+            <thead>
+              <tr>
+                <th>规则编码</th>
+                <th>级别</th>
+                <th>规则名称</th>
+                <th>文件</th>
+                <th>行号</th>
+                <th>那一行的内容</th>
+              </tr>
+            </thead>
+            <tbody id="ignored-body"></tbody>
+          </table>
+        </div>
+      </div>
     </section>
   </main>
 
