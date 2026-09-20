@@ -12,6 +12,8 @@ const state = {
   editingRuleId: '',
   editingFileId: '',
   lastScan: null,
+  expandedDirs: new Set(),
+  hitFilterFileId: '',
 };
 
 const el = (id) => document.getElementById(id);
@@ -367,6 +369,115 @@ async function runScan() {
   }
 }
 
+// 级别分布：三级都摆出来，为 0 的变浅；各级相加必须等于同一行的有效命中
+function levelSpreadHtml(byLevel) {
+  return state.levels.map((level) => {
+    const count = Number(byLevel[level]) || 0;
+    return `<span class="lv-cell ${count === 0 ? 'zero' : ''} ${levelClass(level)}">${escapeHtml(level)} ${count}</span>`;
+  }).join('');
+}
+
+// 一个文件上“每一类命中各有多少条”：按规则编码列出小标签
+function categoryChipsHtml(list) {
+  if (!list.length) return '—';
+  return list.map((item) => `<span class="cat-chip ${levelClass(item.level)}" title="${escapeHtml(item.ruleName)}（${escapeHtml(item.level)}）">${escapeHtml(item.code)}×${item.count}</span>`).join('');
+}
+
+function renderIgnored(result) {
+  const box = el('ignored-box');
+  if (!result.ignored.length) {
+    box.classList.add('hidden');
+    return;
+  }
+  el('ignored-head').textContent = `被忽略 ${result.ignored.length} 条：这些写法撞上的是停用规则，没有参与这一轮比对，不计入有效命中`;
+  el('ignored-body').innerHTML = result.ignored.map((item) => `<tr>
+      <td class="mono">${escapeHtml(item.code)}</td>
+      <td><span class="tag ${levelClass(item.level)}">${escapeHtml(item.level)}</span></td>
+      <td class="mono">${escapeHtml(item.path)}</td>
+      <td class="mono">${item.lineNo}</td>
+      <td class="mono line-cell">${escapeHtml(item.lineText)}</td>
+      <td>${escapeHtml(item.reason)}</td>
+    </tr>`).join('');
+  box.classList.remove('hidden');
+}
+
+// 画目录汇总：每一行是一个目录，展开后是这个目录下的文件，
+// 文件上再看每一类命中各有多少条
+function renderDirectorySummary(result) {
+  const body = el('dir-body');
+  if (!result.summary.byDirectory.length) {
+    body.innerHTML = '<tr><td colspan="6" class="dir-empty">这一轮范围里没有任何匹配（连停用规则的写法也没出现）</td></tr>';
+    return;
+  }
+  const rows = [];
+  result.summary.byDirectory.forEach((dir) => {
+    const expanded = state.expandedDirs.has(dir.dir);
+    rows.push(`<tr class="dir-row${expanded ? ' expanded' : ''}" data-dir-row="${escapeHtml(dir.dir)}">
+      <td class="dir-toggle-col"><button type="button" class="link dir-toggle" data-dir-toggle="${escapeHtml(dir.dir)}">${expanded ? '收起' : '展开'}</button></td>
+      <td class="mono dir-name">${escapeHtml(dir.dir)}/</td>
+      <td class="num strong">${dir.count}</td>
+      <td class="num">${dir.fileCount}</td>
+      <td>${levelSpreadHtml(dir.byLevel)}</td>
+      <td class="num ignored-num">${dir.ignored > 0 ? `${dir.ignored} 条` : '—'}</td>
+    </tr>`);
+    if (expanded) {
+      dir.files.forEach((file) => {
+        const ignoredChips = file.ignoredCategories.length
+          ? file.ignoredCategories.map((item) => `<span class="cat-chip ignored-chip" title="${escapeHtml(item.ruleName)}（已停用）">${escapeHtml(item.code)}×${item.count}</span>`).join('')
+          : '—';
+        rows.push(`<tr class="file-row" data-dir-child="${escapeHtml(dir.dir)}">
+          <td class="dir-toggle-col"></td>
+          <td class="mono">
+            <button type="button" class="link file-link" data-hit-filter="${escapeHtml(file.fileId)}">${escapeHtml(file.path)}</button>
+          </td>
+          <td class="num">${file.count}</td>
+          <td class="num"></td>
+          <td>${levelSpreadHtml(file.byLevel)}</td>
+          <td>${ignoredChips}</td>
+        </tr>
+        <tr class="file-detail-row" data-dir-child="${escapeHtml(dir.dir)}">
+          <td class="dir-toggle-col"></td>
+          <td colspan="5" class="file-detail">
+            <span class="file-detail-label">有效命中分类：</span>${categoryChipsHtml(file.byCategory)}
+          </td>
+        </tr>`);
+      });
+    }
+  });
+  body.innerHTML = rows.join('');
+}
+
+// 命中清单本体，可按汇总里点进来的文件过滤
+function renderHitsTable(result) {
+  const filterFile = state.hitFilterFileId
+    ? result.hits.find((item) => item.fileId === state.hitFilterFileId)
+    : null;
+  const hits = state.hitFilterFileId
+    ? result.hits.filter((item) => item.fileId === state.hitFilterFileId)
+    : result.hits;
+
+  const filterBar = el('hit-filter-bar');
+  if (state.hitFilterFileId) {
+    filterBar.innerHTML = `只看文件 <span class="mono">${escapeHtml(filterFile ? filterFile.path : state.hitFilterFileId)}</span>，有效命中 ${hits.length} 条（忽略条目不在清单里） <button type="button" class="link" data-hit-filter-clear>清除过滤</button>`;
+    filterBar.classList.remove('hidden');
+  } else {
+    filterBar.textContent = '';
+    filterBar.classList.add('hidden');
+  }
+
+  const body = el('hit-body');
+  body.innerHTML = hits.map((hit) => `<tr>
+      <td class="mono">${escapeHtml(hit.code)}</td>
+      <td><span class="tag ${levelClass(hit.level)}">${escapeHtml(hit.level)}</span></td>
+      <td>${escapeHtml(hit.ruleName)}</td>
+      <td class="mono">${escapeHtml(hit.path)}</td>
+      <td class="mono">${hit.lineNo}</td>
+      <td class="mono line-cell">${escapeHtml(hit.lineText)}</td>
+    </tr>`).join('');
+  el('hit-empty').textContent = state.hitFilterFileId ? '这个文件在这一轮没有有效命中' : '这一轮没有命中';
+  el('hit-empty').classList.toggle('hidden', hits.length > 0);
+}
+
 function renderScan(result) {
   el('scan-meta').textContent = `扫描时刻 ${formatTime(result.scannedAt)}　参与比对的规则 ${result.rulesUsed} 条（启用共 ${result.enabledRules} 条）　范围里的文件 ${result.filesInScope} 个（清单共 ${result.filesTotal} 个）`;
 
@@ -379,38 +490,64 @@ function renderScan(result) {
     warningBox.textContent = '';
   }
 
-  const summaryBox = el('scan-summary');
-  const levelText = Object.keys(result.summary.byLevel)
-    .map((key) => `${key} ${result.summary.byLevel[key]} 条`)
-    .join('　');
-  const ruleText = result.summary.byRule
-    .map((item) => `${item.code} ${item.count} 条`)
-    .join('　') || '没有规则命中';
-  const fileText = result.summary.byFile
-    .map((item) => `${item.path} ${item.count} 条`)
-    .join('　') || '没有文件命中';
-  summaryBox.innerHTML = `
-    <div class="summary-line"><strong>一共命中 ${result.summary.total} 条</strong>　${escapeHtml(levelText)}</div>
-    <div class="summary-line">按规则：${escapeHtml(ruleText)}</div>
-    <div class="summary-line">按文件：${escapeHtml(fileText)}</div>`;
-  summaryBox.classList.remove('hidden');
+  // 新一轮扫描默认展开全部目录，并清掉上一轮的文件过滤
+  state.expandedDirs = new Set(result.summary.byDirectory.map((dir) => dir.dir));
+  state.hitFilterFileId = '';
 
-  const body = el('hit-body');
-  body.innerHTML = result.hits.map((hit) => `<tr>
-      <td class="mono">${escapeHtml(hit.code)}</td>
-      <td><span class="tag ${levelClass(hit.level)}">${escapeHtml(hit.level)}</span></td>
-      <td>${escapeHtml(hit.ruleName)}</td>
-      <td class="mono">${escapeHtml(hit.path)}</td>
-      <td class="mono">${hit.lineNo}</td>
-      <td class="mono line-cell">${escapeHtml(hit.lineText)}</td>
-    </tr>`).join('');
-  el('hit-empty').classList.toggle('hidden', result.hits.length > 0);
+  const total = result.summary.total;
+  const levelText = state.levels
+    .map((level) => `${level} ${result.summary.byLevel[level] || 0}`)
+    .join('　');
+  const levelSum = state.levels.reduce((sum, level) => sum + (result.summary.byLevel[level] || 0), 0);
+  const dirSum = result.summary.byDirectory.reduce((sum, dir) => sum + dir.count, 0);
+  const fileSum = result.summary.byDirectory
+    .reduce((sum, dir) => sum + dir.files.reduce((inner, file) => inner + file.count, 0), 0);
+  const ignoredTotal = result.summary.ignoredTotal;
+  const ignoredLevelText = state.levels
+    .map((level) => `${level} ${result.summary.ignoredByLevel[level] || 0}`)
+    .filter((text) => !/ 0$/.test(text))
+    .join('　');
+
+  // 总账行：有效总数、级别合计、目录合计、文件合计四处口径必须一致；忽略单独声明
+  el('summary-totals').innerHTML = `
+    <strong>这一轮有效命中 ${total} 条</strong>
+    <span class="totals-check">（级别合计 ${levelSum}、目录合计 ${dirSum}、文件合计 ${fileSum}，均为 ${total}）</span>
+    <span class="totals-level">${escapeHtml(levelText)}</span>
+    <span class="totals-ignored ${ignoredTotal > 0 ? 'has-ignored' : ''}">另有被忽略 <strong>${ignoredTotal}</strong> 条${ignoredLevelText ? `（${escapeHtml(ignoredLevelText)}）` : ''}，不计入有效命中</span>`;
+
+  renderDirectorySummary(result);
+  renderIgnored(result);
+  el('scan-summary').classList.remove('hidden');
+  renderHitsTable(result);
 }
 
 // 列表上的操作用事件委托统一处理，列表重绘之后不需要重新绑定
 document.addEventListener('click', async (event) => {
   const node = event.target.closest('button');
   if (!node) return;
+
+  if (node.dataset.dirToggle !== undefined) {
+    const dir = node.dataset.dirToggle;
+    if (state.expandedDirs.has(dir)) {
+      state.expandedDirs.delete(dir);
+    } else {
+      state.expandedDirs.add(dir);
+    }
+    if (state.lastScan) renderDirectorySummary(state.lastScan);
+    return;
+  }
+
+  if (node.dataset.hitFilter !== undefined) {
+    state.hitFilterFileId = node.dataset.hitFilter;
+    if (state.lastScan) renderHitsTable(state.lastScan);
+    return;
+  }
+
+  if (node.dataset.hitFilterClear !== undefined) {
+    state.hitFilterFileId = '';
+    if (state.lastScan) renderHitsTable(state.lastScan);
+    return;
+  }
 
   if (node.dataset.ruleEdit) {
     clearNotice();

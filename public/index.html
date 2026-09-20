@@ -138,7 +138,43 @@
       </div>
       <p class="scan-meta" id="scan-meta">还没有扫过，点右上角扫一遍</p>
       <p class="scan-warning hidden" id="scan-warning"></p>
-      <div class="summary hidden" id="scan-summary"></div>
+      <div class="summary hidden" id="scan-summary">
+        <div class="summary-line" id="summary-totals"></div>
+        <div class="table-wrap dir-wrap">
+          <table class="grid dir-grid">
+            <thead>
+              <tr>
+                <th class="dir-toggle-col"></th>
+                <th>目录</th>
+                <th>有效命中</th>
+                <th>涉及文件</th>
+                <th>级别分布</th>
+                <th>被忽略</th>
+              </tr>
+            </thead>
+            <tbody id="dir-body"></tbody>
+          </table>
+        </div>
+        <div class="ignored-box hidden" id="ignored-box">
+          <div class="ignored-head" id="ignored-head"></div>
+          <div class="table-wrap">
+            <table class="grid ignored-grid">
+              <thead>
+                <tr>
+                  <th>规则编码</th>
+                  <th>级别</th>
+                  <th>文件</th>
+                  <th>行号</th>
+                  <th>那一行的内容</th>
+                  <th>忽略原因</th>
+                </tr>
+              </thead>
+              <tbody id="ignored-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <p class="hit-filter-bar hidden" id="hit-filter-bar"></p>
       <div class="table-wrap">
         <table class="grid">
           <thead>

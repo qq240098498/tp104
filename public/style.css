@@ -315,6 +315,153 @@ td.actions {
   margin-top: 4px;
 }
 
+#summary-totals {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 14px;
+}
+
+.totals-check {
+  color: var(--ink-soft);
+}
+
+.totals-level {
+  color: var(--ink);
+}
+
+.totals-ignored {
+  color: var(--ink-soft);
+}
+
+.totals-ignored.has-ignored {
+  color: #8a5a00;
+}
+
+.dir-wrap {
+  margin-top: 10px;
+}
+
+table.dir-grid {
+  min-width: 720px;
+}
+
+table.dir-grid th,
+table.dir-grid td {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  max-width: none;
+}
+
+.dir-toggle-col {
+  width: 52px;
+  text-align: center;
+}
+
+td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+td.num.strong {
+  font-weight: 700;
+}
+
+td.ignored-num {
+  color: #8a5a00;
+  white-space: nowrap;
+}
+
+.dir-name {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+td.dir-empty {
+  text-align: center;
+  color: var(--ink-soft);
+  background: #fbfcfe;
+}
+
+tr.dir-row td {
+  background: #f3f6fb;
+}
+
+.lv-cell {
+  display: inline-block;
+  margin: 1px 4px 1px 0;
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.lv-cell.zero {
+  background: #f1f3f6;
+  color: #a9b3bd;
+}
+
+tr.file-row td {
+  background: #fbfcfe;
+}
+
+.file-link {
+  font-size: 12.5px;
+}
+
+td.file-detail {
+  padding: 4px 10px 10px 24px !important;
+  background: #fbfcfe;
+}
+
+.file-detail-label {
+  color: var(--ink-soft);
+  margin-right: 6px;
+}
+
+.cat-chip {
+  display: inline-block;
+  margin: 2px 6px 2px 0;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-family: Consolas, "Courier New", monospace;
+  white-space: nowrap;
+}
+
+.cat-chip.ignored-chip {
+  background: #f1f3f6;
+  color: #8a939e;
+  text-decoration: line-through;
+}
+
+.ignored-box {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--warn-line);
+}
+
+.ignored-head {
+  margin-bottom: 6px;
+  color: #8a5a00;
+  font-size: 12.5px;
+}
+
+table.ignored-grid {
+  min-width: 720px;
+}
+
+.hit-filter-bar {
+  margin: 0 0 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--accent-soft);
+  font-size: 12.5px;
+}
+
 .content-preview {
   margin: 12px 0 0;
   padding: 12px;
